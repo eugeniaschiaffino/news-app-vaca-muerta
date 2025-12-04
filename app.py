@@ -1,60 +1,75 @@
 import streamlit as st
 import google.generativeai as genai
-import os
 
-# 1. Configuración de la página (La "Fachada")
-st.set_page_config(page_title="Vitto: Inteligencia Oil & Gas", page_icon="🛢️")
+# 1. Configuración de la página para que parezca tu News Hub
+st.set_page_config(page_title="News Hub Energía Argentina", page_icon="⚡", layout="wide")
 
-st.title("🛢️ Vitto el Erudito: Edición Vaca Muerta")
-st.write("Preguntame sobre RIGI, GNL, Soft Skills o estrategias para el Upstream.")
+# Estilos para que se vea elegante como querías
+st.markdown("""
+<style>
+    .title {font-size: 3em !important; font-family: 'Serif'; color: #2C3E50;}
+    .subtitle {color: #7F8C8D; font-size: 1.2em;}
+    .card {padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-bottom: 10px; border-left: 5px solid #FF4B4B;}
+</style>
+""", unsafe_allow_html=True)
 
-# 2. Conexión con el Cerebro (La API Key)
-# Esto busca la llave en los "secretos" de la nube para que nadie te la robe.
-api_key = st.secrets["GOOGLE_API_KEY"]
+# 2. Tu Título y Marca Personal
+st.markdown('<p class="subtitle">INTELIGENCIA ARTIFICIAL APLICADA AL SECTOR ENERGÉTICO</p>', unsafe_allow_html=True)
+st.markdown('<h1 class="title">News Hub Energía Argentina</h1>', unsafe_allow_html=True)
+st.caption("by María Eugenia Schiaffino")
 
-if not api_key:
-    st.error("¡Alerta! Falta la API Key. Configurala en los secretos de Streamlit.")
+st.divider()
+
+# 3. Conexión con el Cerebro (API Key)
+try:
+    api_key = st.secrets["GOOGLE_API_KEY"]
+    genai.configure(api_key=api_key)
+except Exception:
+    st.error("⚠️ Error: No encuentro la API Key. Asegurate de ponerla en los 'Secrets' de Streamlit.")
     st.stop()
 
-genai.configure(api_key=api_key)
-
-# 3. Configuración del Modelo (Tu creación de AI Studio)
-# Acá podés cambiar las instrucciones del sistema si querés ajustar la personalidad.
-generation_config = {
-  "temperature": 0.9,
-  "top_p": 1,
-  "top_k": 1,
-  "max_output_tokens": 2048,
-}
-
+# 4. El Cerebro (Configuración del Modelo)
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-pro", # O el modelo que hayas usado en AI Studio
-    generation_config=generation_config,
-    system_instruction="Sos un experto en Oil & Gas y estrategia en Vaca Muerta. Respondés con ironía inteligente y datos precisos."
+    model_name="gemini-1.5-pro",
+    system_instruction="""
+    Actúas como un Analista Senior de Energía en Argentina (perfil 'News Hub').
+    Tu objetivo es resumir, explicar y analizar noticias o temas sobre Vaca Muerta, GNL, YPF y Energía.
+    Tu tono es periodístico, estratégico y profesional.
+    Cuando el usuario busque un tema, generá un 'Boletín Ejecutivo' simulado con:
+    1. Un titular impactante.
+    2. El contexto estratégico (El 'Por qué importa').
+    3. Los jugadores clave involucrados.
+    4. Una conclusión tipo 'Visión de Futuro'.
+    """
 )
 
-# 4. El Chat (La Interacción)
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# 5. La Barra de Búsqueda (Como en tu diseño original)
+query = st.text_input("🔍 Buscar sobre Vaca Muerta, GNL, YPF...", placeholder="Ej: Últimos avances del RIGI o Exportaciones de GNL")
 
-# Mostrar historial
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+# Sugerencias rápidas (Botones)
+col1, col2, col3, col4 = st.columns(4)
+if col1.button("Récord Vaca Muerta"): query = "Récord de producción en Vaca Muerta y su impacto"
+if col2.button("Ley RIGI y GNL"): query = "Estado actual del RIGI y proyecto GNL YPF-Petronas"
+if col3.button("Inversiones 2025"): query = "Proyección de inversiones en Oil & Gas para 2025"
+if col4.button("Oleoducto Vaca Muerta Sur"): query = "Avances estratégicos del Oleoducto Vaca Muerta Sur"
 
-# Capturar input del usuario
-if prompt := st.chat_input("¿Cuál es tu consulta estratégica?"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
+# 6. Generar el Reporte cuando hay búsqueda
+if query:
+    with st.spinner(f"Analizando inteligencia sobre: {query}..."):
+        try:
+            response = model.generate_content(query)
+            
+            # Mostrar resultado con formato bonito
+            st.markdown(f"""
+            <div class="card">
+                <h3>Resultados del Análisis: {query}</h3>
+                {response.text}
+            </div>
+            """, unsafe_allow_html=True)
+            
+        except Exception as e:
+            st.error(f"Ocurrió un error al procesar: {e}")
 
-    # Generar respuesta
-    with st.chat_message("assistant"):
-        with st.spinner("Procesando datos del yacimiento..."):
-            chat = model.start_chat(history=[
-                {"role": m["role"], "parts": [m["content"]]} for m in st.session_state.messages[:-1]
-            ])
-            response = chat.send_message(prompt)
-            st.markdown(response.text)
-    
-    st.session_state.messages.append({"role": "model", "content": response.text})
+# Footer
+st.markdown("---")
+st.markdown("*News Hub Energía - Powered by Vitto el Erudito AI*")
